@@ -1,193 +1,132 @@
-﻿# 🎓 Next-Gen Learning Dashboard
+# Next-Gen Learning Dashboard
 
-A premium, high-performance student dashboard with butter-smooth animations, dark mode design, and real-time data from Supabase. Built to feel like the future of education platforms.
+Live demo: [frontend-page-4aqpdurwh-mayank-0399s-projects.vercel.app](https://frontend-page-4aqpdurwh-mayank-0399s-projects.vercel.app)
 
-## What's Inside
+This is a dark, animated student dashboard built for the Frontend Intern Challenge. The goal was to make the dashboard feel polished without turning it into a noisy landing page: live course data, smooth motion, a responsive Bento layout, and a UI that stays stable while it animates.
 
-This is a **server-rendered Next.js app** that pulls live course data from Supabase and animates it onto the screen with hardware-accelerated Framer Motion. The whole thing is typed with TypeScript and styled with Tailwind CSS because we care about code quality.
+## What I Built
 
-``
-app/              - Next.js 13+ App Router (Server Components ftw)
-├── dashboard/    - The main dashboard route
-├── layout.tsx    - Root layout with metadata
-└── globals.css   - Global dark mode styles
+The app is a Next.js App Router project with a single dashboard experience at `/dashboard`. Course cards are fetched from Supabase on the server, then rendered into animated Bento tiles on the page.
 
-components/       - React components (mix of Server & Client)
-├── dashboard/    - Dashboard-specific components
-├── navigation/   - Sidebar & mobile nav
-└── shared/       - Reusable, animated bits
+The design uses a dark-only visual system with deep background tones, soft gradients, subtle grain/mesh overlays, and spring-based interactions. I focused on keeping the movement transform-based so hover states and entrance animations do not cause layout shifts.
 
-lib/
-├── supabase/     - Server-side Supabase client + queries
-└── animations/   - Reusable animation variants
+## Tech Stack
 
-types/            - TypeScript interfaces for Supabase data
-public/           - Static assets (grain texture, etc.)
-``
+- Next.js with App Router
+- TypeScript
+- Supabase
+- Tailwind CSS
+- Framer Motion
+- Lucide React
 
-## Quick Start
+## Live Data
 
-### 1. Prerequisites
-- Node.js 18+ (seriously)
-- A free [Supabase](https://supabase.com) account
+Course data comes from a Supabase `courses` table. The app expects this schema:
 
-### 2. Install Dependencies
-
-``ash
-npm install
-# installs: next, react, framer-motion, @supabase/ssr, tailwindcss, lucide-react
-``
-
-### 3. Set Up Supabase
-
-Go to your Supabase project and create a courses table with this SQL:
-
-``sql
-create table courses (
+```sql
+create table if not exists public.courses (
   id uuid primary key default gen_random_uuid(),
   title text not null,
-  description text,
-  progress integer default 0,
-  icon_name text default 'BookOpen',
+  progress integer not null check (progress >= 0 and progress <= 100),
+  icon_name text not null,
   created_at timestamp with time zone default now()
 );
+```
 
--- Add some test data
-insert into courses (title, description, progress, icon_name) values
-  ('Advanced React Patterns', 'Master composition, hooks, and state management', 75, 'BookOpen'),
-  ('TypeScript Mastery', 'Go from types to generics like a pro', 45, 'Code'),
-  ('Tailwind Design Systems', 'Build scalable, maintainable design systems', 60, 'Palette'),
-  ('Web Performance', 'Optimize everything: bundles, images, runtime', 82, 'Zap');
-``
+Example seed data:
 
-### 4. Environment Variables
+```sql
+insert into public.courses (title, progress, icon_name)
+values
+  ('Advanced React Patterns', 75, 'Code'),
+  ('Design Systems Mastery', 62, 'Palette'),
+  ('Database Foundations', 88, 'Database'),
+  ('AI Product Engineering', 46, 'Brain');
+```
 
-Copy .env.example and rename to .env.local. Fill in your Supabase credentials:
+If Row Level Security is enabled, allow public read access for the demo:
 
-``ash
-cp .env.example .env.local
-``
+```sql
+create policy "Allow public read access to courses"
+on public.courses
+for select
+to anon
+using (true);
+```
 
-Then add:
-``
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
-SUPABASE_SERVICE_KEY=your_service_key_here
-``
+## Environment Variables
 
-Get these from your Supabase project settings → API.
+Create a `.env.local` file in the project root:
 
-### 5. Run It
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-``ash
+The same two variables are required in Vercel under **Project Settings > Environment Variables**.
+
+## Running Locally
+
+```bash
+npm install
 npm run dev
-``
+```
 
-Open [http://localhost:3000](http://localhost:3000) and you should see the dashboard load with your courses animating in.
+Then open:
 
-## What Makes This Special
+```text
+http://localhost:3000/dashboard
+```
 
-🎬 **Animations That Don't Suck**
-- Staggered Bento tiles fading in with upward momentum
-- Spring physics on hover (because ease-in-out is boring)
-- Zero layout shifts — we use \	ransform\ and \opacity\ only
-- Pulsing skeleton loaders while data fetches
+For a production check:
 
-🔐 **Server-First Data Fetching**
-- Uses Next.js Server Components to fetch from Supabase securely
-- Environment variables never leak to the client
-- Suspense boundaries show elegant loading states
+```bash
+npm run build
+npm run start
+```
 
-🎨 **Dark Mode Only**
-- Deep blacks, dark grays, and glowing gradients
-- Subtle grain texture overlay
-- Every detail is intentional
+## Architecture Notes
 
-📱 **Responsive & Mobile-Ready**
-- Desktop: Full Bento grid + visible sidebar
-- Tablet: Sidebar collapses to icons, 2-column grid
-- Mobile: Bottom nav, single scrolling column
+The dashboard keeps the data layer server-first. `app/dashboard/page.tsx` owns the route and Suspense boundary, while `components/dashboard/DashboardContent.tsx` fetches courses through the Supabase query helper. The animated tiles themselves are client components because Framer Motion needs to run in the browser.
 
-## Project Structure Explained
+The component split is intentionally simple:
 
-### Server Components (RSC)
-- \pp/dashboard/page.tsx\ - Main page, fetches data
-- \lib/supabase/server.ts\ - Server-side Supabase client
-- \lib/supabase/queries.ts\ - Database queries
+- `components/dashboard` contains the Bento grid, hero tile, activity tile, and dynamic course cards.
+- `components/navigation` contains the responsive sidebar and mobile bottom navigation.
+- `components/shared` contains reusable pieces like the animated progress bar and skeleton cards.
+- `lib/supabase` contains the server Supabase client and query function.
+- `lib/animations.ts` keeps the shared Framer Motion variants in one place.
 
-### Client Components (Use 'use client')
-- \components/dashboard/*\ - Animated tiles and layout
-- \components/navigation/*\ - Interactive nav
-- \components/shared/*\ - Reusable animated bits
+## Animation Details
 
-### Types
-``	ypescript
-// types/course.ts
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  progress: number;
-  icon_name: string;
-  created_at: string;
-}
-``
+The Bento tiles stagger in after the server data is ready. Each card fades in and moves slightly upward using opacity and transform.
+
+Hover states use Framer Motion spring physics with a small scale increase and a soft glow overlay. The progress bar animates from zero to the course progress value using `scaleX`, which avoids layout shifts.
+
+The sidebar uses a shared Framer Motion `layoutId` for the active background highlight, so the highlight snaps between navigation items when clicked.
+
+## Responsive Behavior
+
+- Desktop: full Bento grid with expanded sidebar.
+- Tablet: icon-only sidebar with a two-column dashboard grid.
+- Mobile: bottom navigation with a single-column scrolling dashboard.
 
 ## Deployment
 
-### Deploy to Vercel (Recommended)
+The app is deployed on Vercel:
 
-1. Push to GitHub
-2. Go to [Vercel](https://vercel.com)
-3. Import your repo
-4. Add environment variables in the dashboard
-5. Deploy
+[https://frontend-page-4aqpdurwh-mayank-0399s-projects.vercel.app](https://frontend-page-4aqpdurwh-mayank-0399s-projects.vercel.app)
 
-That's it. Vercel handles Next.js optimization automatically.
+Vercel uses the default Next.js settings:
 
-## Key Technologies
+```text
+Build Command: npm run build
+Output Directory: .next
+Install Command: npm install
+```
 
-| What | Why |
-|------|-----|
-| **Next.js** | Server Components + automatic optimization |
-| **Supabase** | PostgreSQL + auth + realtime (if needed later) |
-| **Tailwind CSS** | Utility-first, zero runtime overhead |
-| **Framer Motion** | Hardware-accelerated animations |
-| **Lucide React** | Beautiful SVG icons, tree-shakeable |
-| **TypeScript** | Catch bugs before users do |
+## Small Challenges
 
-## Development Tips
+The main challenge was keeping the page animated without causing layout movement. I handled that by using transform and opacity for motion, keeping card dimensions stable, and moving hover glow into Framer Motion overlays instead of changing layout-affecting styles.
 
-- Hot reload works perfectly with \
-pm run dev\
-- Check Supabase dashboard for real-time data changes
-- Use browser DevTools to inspect animations (Performance tab)
-- If data doesn't load, check console for Supabase errors
-- Tailwind intellisense works best in VS Code with the official extension
-
-## Troubleshooting
-
-**"Supabase connection refused"**
-- Check your \.env.local\ file (typos happen)
-- Make sure your project is running (check Supabase dashboard)
-
-**"Icons not rendering"**
-- Make sure \icon_name\ matches Lucide icons exactly (case-sensitive)
-- Check the [Lucide docs](https://lucide.dev) for available icons
-
-**"Animations are janky"**
-- Check DevTools Performance tab for jank
-- We use \	ransform\ and \opacity\ only, so it should be smooth
-- If still janky, let's debug together
-
-## Next Steps (For You)
-
-- [ ] Customize colors in \globals.css\ and Tailwind config
-- [ ] Add more courses to Supabase
-- [ ] Build an auth system (Supabase Auth is built-in)
-- [ ] Add real progress tracking
-- [ ] Connect to your actual course backend
-
----
-
-Built with ❤️ for the future of learning. Questions? Check the code comments or open an issue.
+Another important part was separating server and client work cleanly: Supabase data is fetched server-side, while the animation-heavy UI stays in client components.
